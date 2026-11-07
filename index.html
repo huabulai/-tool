@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f4f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0f14" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>翻译</title>
+<style>
+  :root {
+    --bg: #f2f4f7;
+    --card: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --primary: #2563eb;
+    --primary-press: #1d4ed8;
+    --danger: #dc2626;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(17, 24, 39, .04), 0 8px 24px rgba(17, 24, 39, .04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f14;
+      --card: #151b23;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --border: #2a3441;
+      --primary: #3b82f6;
+      --primary-press: #2563eb;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  body { min-height: 100vh; }
+  .app {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 16px calc(28px + env(safe-area-inset-bottom));
+  }
+  .bar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    background: var(--bg);
+    border-bottom: 1px solid transparent;
+  }
+  .bar-left { display: flex; align-items: center; gap: 8px; }
+  .title { font-size: 17px; font-weight: 650; letter-spacing: .01em; }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 7px;
+  }
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+  .icon-btn:active { background: rgba(107, 114, 128, .14); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 12px;
+    box-shadow: var(--shadow);
+  }
+  .label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 8px;
+    letter-spacing: .02em;
+  }
+  textarea {
+    display: block;
+    width: 100%;
+    min-height: 128px;
+    resize: vertical;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 17px;
+    line-height: 1.5;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+  }
+  textarea::placeholder { color: var(--muted); opacity: .75; }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .row .spacer { flex: 1; }
+  .muted { color: var(--muted); font-size: 13px; }
+  select {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--text);
+    padding: 0 12px;
+    font: inherit;
+    font-size: 16px;
+    outline: none;
+  }
+  select:focus { border-color: var(--primary); }
+  button {
+    font: inherit;
+    border: 0;
+    border-radius: 12px;
+    height: 44px;
+    padding: 0 18px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background .15s, opacity .15s, transform .05s;
+  }
+  button:active:not(:disabled) { transform: scale(.985); }
+  .primary { background: var(--primary); color: #fff; }
+  .primary:active:not(:disabled) { background: var(--primary-press); }
+  .primary:disabled { opacity: .42; cursor: not-allowed; }
+  .ghost {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--border);
+    height: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .controls .wide { grid-column: 1 / -1; }
+  .result-text {
+    min-height: 76px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(107, 114, 128, .07);
+    font-size: 17px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .result-text.empty { color: var(--muted); }
+  .status { flex: 1; min-width: 0; }
+  .status.error { color: var(--danger); }
+  .hint {
+    margin: 18px 4px 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .hint code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    background: rgba(107, 114, 128, .12);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    z-index: 100;
+    max-width: calc(100vw - 48px);
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, .93);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(16px);
+    transition: opacity .2s, transform .2s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  @media (max-width: 360px) {
+    .controls { grid-template-columns: 1fr; }
+    .controls .wide { grid-column: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <div class="bar-left">
+      <span class="title">翻译</span>
+      <span class="badge">在线</span>
+    </div>
+    <button class="icon-btn" id="closeBtn" type="button" aria-label="关闭">✕</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="label">
+        <span>原文</span>
+        <span class="muted" id="count">0 字</span>
+      </div>
+      <textarea id="source" placeholder="粘贴或输入要翻译的句子…" rows="4" autocapitalize="sentences" autocomplete="off" spellcheck="false"></textarea>
+      <div class="row">
+        <button class="ghost" id="pasteBtn" type="button">读取剪贴板</button>
+        <span class="spacer"></span>
+        <span class="muted" id="prefill"></span>
+      </div>
+    </section>
+
+    <div class="controls">
+      <select id="target" aria-label="目标语言">
+        <option value="auto" selected>自动（中 ↔ 英）</option>
+        <option value="en">中文 → English</option>
+        <option value="zh-CN">English → 中文</option>
+        <option value="ja">中文 → 日本語</option>
+        <option value="ko">中文 → 한국어</option>
+      </select>
+      <select id="engine" aria-label="翻译引擎">
+        <option value="mymemory" selected>在线（MyMemory）</option>
+        <option value="mock">模拟（离线）</option>
+      </select>
+      <button class="primary wide" id="translateBtn" type="button">翻译</button>
+    </div>
+
+    <section class="card">
+      <div class="label"><span>译文</span></div>
+      <div class="result-text empty" id="result" aria-live="polite">译文会显示在这里</div>
+      <div class="row">
+        <span class="status muted" id="status"></span>
+        <button class="primary" id="copyBtn" type="button" disabled>复制</button>
+      </div>
+    </section>
+
+    <p class="hint">
+      翻译由 MyMemory 免费接口提供，首次使用需联网；免费额度有限，失败时可切换“模拟”或改用自定义接口。<br>
+      文本会发送到第三方翻译服务，请勿翻译敏感信息。<br>
+      接入自己的服务：修改 <code>CONFIG.endpoint</code>，POST <code>{"text":"...","target":"en"}</code>，返回 <code>{"translation":"..."}</code>。
+    </p>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var CONFIG = {
+    // 留空 = 使用内置模拟翻译。
+    // 填写你的代理地址后，页面会 POST { text, target }，并读取 { translation }。
+    endpoint: ''
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var source = $('source');
+  var result = $('result');
+  var copyBtn = $('copyBtn');
+  var translateBtn = $('translateBtn');
+  var statusEl = $('status');
+  var countEl = $('count');
+  var prefillEl = $('prefill');
+  var targetEl = $('target');
+  var engineEl = $('engine');
+  var pasteBtn = $('pasteBtn');
+  var closeBtn = $('closeBtn');
+  var toastEl = $('toast');
+
+  var translated = '';
+  var toastTimer = null;
+  var loading = false;
+
+  var STORAGE_TARGET = 'translate.target';
+  var STORAGE_ENGINE = 'translate.engine';
+  var CJK_RE = /[\u3400-\u9fff\uf900-\ufaff]/;
+
+  function resolveTarget(text, target) {
+    if (target !== 'auto') return target;
+    return CJK_RE.test(text) ? 'en' : 'zh-CN';
+  }
+
+  function savePref(name, value) {
+    try { localStorage.setItem(name, value); } catch (e) {}
+  }
+
+  function restorePrefs() {
+    try {
+      var savedTarget = localStorage.getItem(STORAGE_TARGET);
+      if (savedTarget && targetEl.querySelector('option[value="' + savedTarget + '"]')) {
+        targetEl.value = savedTarget;
+      }
+      var savedEngine = localStorage.getItem(STORAGE_ENGINE);
+      if (savedEngine && engineEl.querySelector('option[value="' + savedEngine + '"]')) {
+        engineEl.value = savedEngine;
+      }
+    } catch (e) {}
+  }
+
+  var PHRASES = new Map([
+    ['你好', 'Hello'],
+    ['您好', 'Hello'],
+    ['谢谢', 'Thank you'],
+    ['谢谢你', 'Thank you'],
+    ['在吗', 'Are you there?'],
+    ['多少钱', 'How much is it?'],
+    ['明天见', 'See you tomorrow'],
+    ['好的', 'OK'],
+    ['再见', 'Goodbye'],
+    ['对不起', 'Sorry'],
+    ['没问题', 'No problem'],
+    ['我爱你', 'I love you'],
+    ['请稍等', 'Please wait a moment'],
+    ['我不明白', 'I don\'t understand'],
+    ['可以再说一遍吗', 'Could you say that again?']
+  ]);
+  var REVERSE = new Map();
+  PHRASES.forEach(function (en, zh) { REVERSE.set(en.toLowerCase(), zh); });
+
+  function toast(message, ms) {
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toastEl.classList.remove('show');
+    }, ms || 2200);
+  }
+
+  function updateCount() {
+    countEl.textContent = source.value.length + ' 字';
+  }
+
+  function resetResult() {
+    translated = '';
+    result.textContent = '译文会显示在这里';
+    result.classList.add('empty');
+    copyBtn.disabled = true;
+    statusEl.textContent = '';
+    statusEl.classList.remove('error');
+  }
+
+  function markStale() {
+    if (translated) {
+      resetResult();
+      statusEl.textContent = '原文已修改，请重新翻译';
+    }
+  }
+
+  function decodeEntities(value) {
+    var textarea = document.createElement('textarea');
+    textarea.innerHTML = value;
+    return textarea.value;
+  }
+
+  function mockTranslate(text, target) {
+    var exact = PHRASES.get(text);
+    if (target === 'zh-CN') {
+      var zh = REVERSE.get(text.toLowerCase());
+      if (zh) return zh;
+      return '[演示] ' + text;
+    }
+    if (exact && target === 'en') return exact;
+    if (exact && target === 'ja') return '[Demo → 日本語] ' + exact;
+    if (exact && target === 'ko') return '[Demo → 한국어] ' + exact;
+    if (target === 'en') return '[Demo] ' + text;
+    if (target === 'ja') return '[Demo → 日本語] ' + text;
+    if (target === 'ko') return '[Demo → 한국어] ' + text;
+    return '[Demo] ' + text;
+  }
+
+  function fetchJson(url, options, timeoutMs, label) {
+    var name = label || '在线翻译';
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, timeoutMs || 12000);
+    var opts = Object.assign({}, options || {}, { signal: controller.signal });
+    function fail(error) {
+      clearTimeout(timer);
+      if (error && error.name === 'AbortError') {
+        throw new Error('请求超时，请检查网络后重试');
+      }
+      throw error;
+    }
+    return fetch(url, opts).then(function (response) {
+      if (!response.ok) {
+        throw new Error(name + '失败（HTTP ' + response.status + '）');
+      }
+      return response.json();
+    }).then(function (data) {
+      clearTimeout(timer);
+      return data;
+    }, fail);
+  }
+
+  function translateWithEndpoint(text, target) {
+    return fetchJson(CONFIG.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, target: target })
+    }, 12000, '翻译服务').then(function (data) {
+      var output = data && (data.translation || (data.data && data.data.translation));
+      if (!output) throw new Error('翻译服务没有返回 translation');
+      return output;
+    });
+  }
+
+  function translateWithMyMemory(text, target) {
+    var sourceLang = CJK_RE.test(text) ? 'zh-CN' : 'en';
+    var pair = sourceLang + '|' + target;
+    var url = 'https://api.mymemory.translated.net/get?q=' +
+      encodeURIComponent(text) + '&langpair=' + encodeURIComponent(pair);
+    return fetchJson(url, { headers: { Accept: 'application/json' } }, 15000).then(function (data) {
+      var status = data && String(data.responseStatus || '');
+      var output = data && data.responseData && data.responseData.translatedText;
+      if (data && (data.quotaFinished || status === '403')) {
+        throw new Error('MyMemory 免费额度已用完');
+      }
+      if (!output) throw new Error('在线翻译没有返回结果');
+      if (/MYMEMORY WARNING|QUOTA/i.test(output)) {
+        throw new Error('MyMemory 免费额度已用完');
+      }
+      return decodeEntities(output);
+    });
+  }
+
+  function performTranslate(text, target, engine) {
+    if (CONFIG.endpoint) {
+      return translateWithEndpoint(text, target).then(function (output) {
+        return { text: output, note: '翻译完成' };
+      });
+    }
+    if (engine === 'mymemory') {
+      return translateWithMyMemory(text, target).then(function (output) {
+        return { text: output, note: '在线翻译完成' };
+      }).catch(function (error) {
+        var message = error && error.message ? error.message : '在线翻译失败';
+        throw new Error(message + '。可切换“模拟”或检查网络。');
+      });
+    }
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        resolve({ text: mockTranslate(text, target), note: '模拟翻译完成' });
+      }, 420);
+    });
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(function () {
+        return true;
+      }).catch(function () {
+        return fallbackCopy(text);
+      });
+    }
+    return Promise.resolve(fallbackCopy(text));
+  }
+
+  function fallbackCopy(text) {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-1000px';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(textarea);
+    return ok;
+  }
+
+  function setLoading(value) {
+    loading = value;
+    translateBtn.disabled = value;
+    translateBtn.textContent = value ? '翻译中…' : '翻译';
+  }
+
+  translateBtn.addEventListener('click', function () {
+    if (loading) return;
+    var text = source.value.trim();
+    if (!text) {
+      toast('请先输入或粘贴要翻译的内容');
+      source.focus();
+      return;
+    }
+
+    var target = resolveTarget(text, targetEl.value);
+    var label = targetEl.value === 'auto'
+      ? '自动：' + (target === 'en' ? '中文 → English' : 'English → 中文')
+      : '';
+
+    setLoading(true);
+    resetResult();
+    statusEl.textContent = label ? '正在翻译（' + label + '）…' : '正在翻译…';
+
+    performTranslate(text, target, engineEl.value).then(function (output) {
+      translated = output.text;
+      result.textContent = output.text;
+      result.classList.remove('empty');
+      copyBtn.disabled = false;
+      statusEl.textContent = label ? output.note + ' · ' + label : output.note;
+      statusEl.classList.remove('error');
+    }).catch(function (error) {
+      translated = '';
+      copyBtn.disabled = true;
+      result.textContent = '翻译失败，请稍后重试';
+      result.classList.add('empty');
+      statusEl.textContent = error && error.message ? error.message : '翻译失败';
+      statusEl.classList.add('error');
+    }).then(function () {
+      setLoading(false);
+    });
+  });
+
+  copyBtn.addEventListener('click', function () {
+    if (!translated) return;
+    copyText(translated).then(function (ok) {
+      toast(ok ? '已复制，关闭后粘贴到聊天框' : '复制失败，请长按译文手动复制');
+    });
+  });
+
+  pasteBtn.addEventListener('click', function () {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function (text) {
+        if (!text) {
+          toast('剪贴板是空的');
+          return;
+        }
+        source.value = text;
+        updateCount();
+        markStale();
+        toast('已从剪贴板读取');
+      }).catch(function () {
+        source.focus();
+        toast('无法自动读取，请长按输入框选择“粘贴”');
+      });
+      return;
+    }
+    source.focus();
+    toast('无法自动读取，请长按输入框选择“粘贴”');
+  });
+
+  closeBtn.addEventListener('click', function () {
+    window.close();
+    setTimeout(function () {
+      toast('如果页面没有关闭，请点系统自带的“完成”');
+    }, 260);
+  });
+
+  source.addEventListener('input', function () {
+    updateCount();
+    markStale();
+  });
+
+  targetEl.addEventListener('change', function () {
+    savePref(STORAGE_TARGET, targetEl.value);
+    if (translated) {
+      translated = '';
+      result.textContent = '语言已切换，请重新翻译';
+      result.classList.add('empty');
+      copyBtn.disabled = true;
+      statusEl.textContent = '';
+    }
+  });
+
+  engineEl.addEventListener('change', function () {
+    savePref(STORAGE_ENGINE, engineEl.value);
+    if (translated) {
+      translated = '';
+      result.textContent = '引擎已切换，请重新翻译';
+      result.classList.add('empty');
+      copyBtn.disabled = true;
+      statusEl.textContent = '';
+    }
+  });
+
+  var params = new URLSearchParams(window.location.search);
+  var initial = params.get('text');
+  if (!initial && window.location.hash.indexOf('#text=') === 0) {
+    try { initial = decodeURIComponent(window.location.hash.slice(6)); } catch (e) { initial = ''; }
+  }
+  if (initial) {
+    source.value = initial;
+    prefillEl.textContent = '已从快捷指令带入';
+  }
+  restorePrefs();
+  updateCount();
+})();
+</script>
+</body>
+</html>
