@@ -319,12 +319,12 @@
     </section>
 
     <div class="controls">
-      <select id="target" aria-label="目标语言">
-        <option value="auto" selected>自动（中 ↔ 英）</option>
-        <option value="en">中文 → English</option>
-        <option value="zh-CN">English → 中文</option>
-        <option value="ja">中文 → 日本語</option>
-        <option value="ko">中文 → 한국어</option>
+      <select id="target" aria-label="翻译方向">
+        <option value="auto-en" selected>自动（中 ↔ 英）</option>
+        <option value="auto-fr">自动（中 ↔ 法）</option>
+        <option value="auto-de">自动（中 ↔ 德）</option>
+        <option value="auto-es">自动（中 ↔ 西）</option>
+        <option value="auto-ar">自动（中 ↔ 阿）</option>
       </select>
       <select id="engine" aria-label="翻译引擎">
         <option value="mymemory" selected>在线（MyMemory）</option>
@@ -335,7 +335,7 @@
 
     <section class="card">
       <div class="label"><span>译文</span></div>
-      <div class="result-text empty" id="result" aria-live="polite">译文会显示在这里</div>
+      <div class="result-text empty" id="result" dir="auto" aria-live="polite">译文会显示在这里</div>
       <div class="row">
         <span class="status muted" id="status"></span>
         <button class="primary" id="copyBtn" type="button" disabled>复制</button>
@@ -394,9 +394,20 @@
   var STORAGE_ENGINE = 'translate.engine';
   var CJK_RE = /[\u3400-\u9fff\uf900-\ufaff]/;
 
-  function resolveTarget(text, target) {
-    if (target !== 'auto') return target;
-    return CJK_RE.test(text) ? 'en' : 'zh-CN';
+  var AUTO_PAIRS = {
+    'auto-en': { lang: 'en', name: '英语' },
+    'auto-fr': { lang: 'fr', name: '法语' },
+    'auto-de': { lang: 'de', name: '德语' },
+    'auto-es': { lang: 'es', name: '西班牙语' },
+    'auto-ar': { lang: 'ar', name: '阿拉伯语' }
+  };
+
+  function resolvePair(text, option) {
+    var pair = AUTO_PAIRS[option] || AUTO_PAIRS['auto-en'];
+    if (CJK_RE.test(text)) {
+      return { source: 'zh-CN', target: pair.lang, label: '中文 → ' + pair.name };
+    }
+    return { source: pair.lang, target: 'zh-CN', label: pair.name + ' → 中文' };
   }
 
   function savePref(name, value) {
@@ -453,7 +464,7 @@
     clearTimeout(doneTimer);
     doneTimer = setTimeout(function () {
       doneEl.classList.remove('show');
-    }, ms || 1600);
+    }, ms || 900);
   }
 
   function updateCount() {
@@ -521,11 +532,11 @@
     }, fail);
   }
 
-  function translateWithEndpoint(text, target) {
+  function translateWithEndpoint(text, source, target) {
     return fetchJson(CONFIG.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text, target: target })
+      body: JSON.stringify({ text: text, source: source, target: target })
     }, 12000, '翻译服务').then(function (data) {
       var output = data && (data.translation || (data.data && data.data.translation));
       if (!output) throw new Error('翻译服务没有返回 translation');
@@ -533,9 +544,8 @@
     });
   }
 
-  function translateWithMyMemory(text, target) {
-    var sourceLang = CJK_RE.test(text) ? 'zh-CN' : 'en';
-    var pair = sourceLang + '|' + target;
+  function translateWithMyMemory(text, source, target) {
+    var pair = source + '|' + target;
     var url = 'https://api.mymemory.translated.net/get?q=' +
       encodeURIComponent(text) + '&langpair=' + encodeURIComponent(pair);
     return fetchJson(url, { headers: { Accept: 'application/json' } }, 15000).then(function (data) {
@@ -552,14 +562,14 @@
     });
   }
 
-  function performTranslate(text, target, engine) {
+  function performTranslate(text, source, target, engine) {
     if (CONFIG.endpoint) {
-      return translateWithEndpoint(text, target).then(function (output) {
+      return translateWithEndpoint(text, source, target).then(function (output) {
         return { text: output, note: '翻译完成' };
       });
     }
     if (engine === 'mymemory') {
-      return translateWithMyMemory(text, target).then(function (output) {
+      return translateWithMyMemory(text, source, target).then(function (output) {
         return { text: output, note: '在线翻译完成' };
       }).catch(function (error) {
         var message = error && error.message ? error.message : '在线翻译失败';
@@ -615,21 +625,18 @@
       return;
     }
 
-    var target = resolveTarget(text, targetEl.value);
-    var label = targetEl.value === 'auto'
-      ? '自动：' + (target === 'en' ? '中文 → English' : 'English → 中文')
-      : '';
+    var pair = resolvePair(text, targetEl.value);
 
     setLoading(true);
     resetResult();
-    statusEl.textContent = label ? '正在翻译（' + label + '）…' : '正在翻译…';
+    statusEl.textContent = '正在翻译（' + pair.label + '）…';
 
-    performTranslate(text, target, engineEl.value).then(function (output) {
+    performTranslate(text, pair.source, pair.target, engineEl.value).then(function (output) {
       translated = output.text;
       result.textContent = output.text;
       result.classList.remove('empty');
       copyBtn.disabled = false;
-      statusEl.textContent = label ? output.note + ' · ' + label : output.note;
+      statusEl.textContent = output.note + ' · ' + pair.label;
       statusEl.classList.remove('error');
     }).catch(function (error) {
       translated = '';
