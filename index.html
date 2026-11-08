@@ -143,6 +143,28 @@
     outline: none;
   }
   select:focus { border-color: var(--primary); }
+  .detected {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    background: rgba(107, 114, 128, .07);
+    color: var(--muted);
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .detected.is-detected {
+    border-style: solid;
+    color: var(--text);
+    background: var(--card);
+  }
   button {
     font: inherit;
     border: 0;
@@ -170,11 +192,22 @@
   }
   .controls {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr auto 1fr;
     gap: 10px;
     margin-top: 12px;
   }
   .controls .wide { grid-column: 1 / -1; }
+  .arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    min-width: 18px;
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1;
+  }
+  .arrow::before { content: "→"; }
   .result-text {
     min-height: 76px;
     padding: 12px;
@@ -291,6 +324,8 @@
   @media (max-width: 360px) {
     .controls { grid-template-columns: 1fr; }
     .controls .wide { grid-column: auto; }
+    .arrow { height: 20px; }
+    .arrow::before { content: "↓"; }
   }
 </style>
 </head>
@@ -320,16 +355,15 @@
     </section>
 
     <div class="controls">
-      <select id="target" aria-label="翻译方向">
-        <option value="auto-en" selected>自动（中 ↔ 英）</option>
-        <option value="auto-fr">自动（中 ↔ 法）</option>
-        <option value="auto-de">自动（中 ↔ 德）</option>
-        <option value="auto-es">自动（中 ↔ 西）</option>
-        <option value="auto-ar">自动（中 ↔ 阿）</option>
-      </select>
-      <select id="engine" aria-label="翻译引擎">
-        <option value="mymemory" selected>在线（MyMemory）</option>
-        <option value="mock">模拟（离线）</option>
+      <div class="detected" id="detected">自动识别</div>
+      <span class="arrow" aria-hidden="true"></span>
+      <select id="target" aria-label="目标语言">
+        <option value="en" selected>英语</option>
+        <option value="fr">法语</option>
+        <option value="de">德语</option>
+        <option value="es">西班牙语</option>
+        <option value="ar">阿拉伯语</option>
+        <option value="zh-CN">中文简体</option>
       </select>
       <button class="primary wide" id="translateBtn" type="button">翻译</button>
     </div>
@@ -344,7 +378,6 @@
     </section>
 
     <p class="hint">
-      翻译由自建接口提供（百度翻译 + 假发术语表），接口不可用时自动回退 MyMemory，无需手动切换。<br>
       文本会发送到第三方翻译服务，请勿翻译敏感信息。
     </p>
   </main>
@@ -378,7 +411,7 @@
   var countEl = $('count');
   var prefillEl = $('prefill');
   var targetEl = $('target');
-  var engineEl = $('engine');
+  var detectedEl = $('detected');
   var pasteBtn = $('pasteBtn');
   var clearBtn = $('clearBtn');
   var closeBtn = $('closeBtn');
@@ -392,23 +425,22 @@
   var loading = false;
 
   var STORAGE_TARGET = 'translate.target';
-  var STORAGE_ENGINE = 'translate.engine';
-  var CJK_RE = /[\u3400-\u9fff\uf900-\ufaff]/;
 
-  var AUTO_PAIRS = {
-    'auto-en': { lang: 'en', name: '英语' },
-    'auto-fr': { lang: 'fr', name: '法语' },
-    'auto-de': { lang: 'de', name: '德语' },
-    'auto-es': { lang: 'es', name: '西班牙语' },
-    'auto-ar': { lang: 'ar', name: '阿拉伯语' }
+  // 目标语言下拉的取值 → 中文名；接口回传的识别结果也用同一张表翻译
+  var LANG_NAMES = {
+    'zh-CN': '中文简体', zh: '中文简体', en: '英语', fr: '法语', de: '德语',
+    es: '西班牙语', ar: '阿拉伯语', ja: '日语', ko: '韩语', ru: '俄语',
+    pt: '葡萄牙语', it: '意大利语', nl: '荷兰语', pl: '波兰语', tr: '土耳其语',
+    th: '泰语', vi: '越南语', id: '印尼语'
   };
 
-  function resolvePair(text, option) {
-    var pair = AUTO_PAIRS[option] || AUTO_PAIRS['auto-en'];
-    if (CJK_RE.test(text)) {
-      return { source: 'zh-CN', target: pair.lang, label: '中文 → ' + pair.name };
-    }
-    return { source: pair.lang, target: 'zh-CN', label: pair.name + ' → 中文' };
+  function langName(code) {
+    return LANG_NAMES[code] || code || '未知语言';
+  }
+
+  function resetDetected() {
+    detectedEl.classList.remove('is-detected');
+    detectedEl.textContent = '自动识别';
   }
 
   function savePref(name, value) {
@@ -421,32 +453,8 @@
       if (savedTarget && targetEl.querySelector('option[value="' + savedTarget + '"]')) {
         targetEl.value = savedTarget;
       }
-      var savedEngine = localStorage.getItem(STORAGE_ENGINE);
-      if (savedEngine && engineEl.querySelector('option[value="' + savedEngine + '"]')) {
-        engineEl.value = savedEngine;
-      }
     } catch (e) {}
   }
-
-  var PHRASES = new Map([
-    ['你好', 'Hello'],
-    ['您好', 'Hello'],
-    ['谢谢', 'Thank you'],
-    ['谢谢你', 'Thank you'],
-    ['在吗', 'Are you there?'],
-    ['多少钱', 'How much is it?'],
-    ['明天见', 'See you tomorrow'],
-    ['好的', 'OK'],
-    ['再见', 'Goodbye'],
-    ['对不起', 'Sorry'],
-    ['没问题', 'No problem'],
-    ['我爱你', 'I love you'],
-    ['请稍等', 'Please wait a moment'],
-    ['我不明白', 'I don\'t understand'],
-    ['可以再说一遍吗', 'Could you say that again?']
-  ]);
-  var REVERSE = new Map();
-  PHRASES.forEach(function (en, zh) { REVERSE.set(en.toLowerCase(), zh); });
 
   function toast(message, ms) {
     toastEl.textContent = message;
@@ -479,6 +487,7 @@
     copyBtn.disabled = true;
     statusEl.textContent = '';
     statusEl.classList.remove('error');
+    resetDetected();
   }
 
   function markStale() {
@@ -494,20 +503,14 @@
     return textarea.value;
   }
 
-  function mockTranslate(text, target) {
-    var exact = PHRASES.get(text);
-    if (target === 'zh-CN') {
-      var zh = REVERSE.get(text.toLowerCase());
-      if (zh) return zh;
-      return '[演示] ' + text;
-    }
-    if (exact && target === 'en') return exact;
-    if (exact && target === 'ja') return '[Demo → 日本語] ' + exact;
-    if (exact && target === 'ko') return '[Demo → 한국어] ' + exact;
-    if (target === 'en') return '[Demo] ' + text;
-    if (target === 'ja') return '[Demo → 日本語] ' + text;
-    if (target === 'ko') return '[Demo → 한국어] ' + text;
-    return '[Demo] ' + text;
+  // 接口没回传识别结果时的本地粗判（也用于 MyMemory 兜底，它不支持 auto）
+  function guessSource(text) {
+    if (/[\u3400-\u9fff\uf900-\ufaff]/.test(text)) return 'zh-CN';
+    if (/[\u0600-\u06ff]/.test(text)) return 'ar';
+    if (/[\u3040-\u30ff]/.test(text)) return 'ja';
+    if (/[\uac00-\ud7af]/.test(text)) return 'ko';
+    if (/[\u0400-\u04ff]/.test(text)) return 'ru';
+    return 'en';
   }
 
   function fetchJson(url, options, timeoutMs, label) {
@@ -533,15 +536,15 @@
     }, fail);
   }
 
-  function translateWithEndpoint(text, source, target) {
+  function translateWithEndpoint(text, target) {
     return fetchJson(CONFIG.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: text, source: source, target: target })
+      body: JSON.stringify({ text: text, source: 'auto', target: target })
     }, 12000, '翻译服务').then(function (data) {
       var output = data && (data.translation || (data.data && data.data.translation));
       if (!output) throw new Error('翻译服务没有返回 translation');
-      return output;
+      return { text: output, detected: (data.source || '') };
     });
   }
 
@@ -563,34 +566,35 @@
     });
   }
 
-  function performTranslate(text, source, target, engine) {
+  function performTranslate(text, target) {
+    var guess = guessSource(text);
+
+    function makeResult(output, detected, note) {
+      return {
+        text: output,
+        detected: detected,
+        note: note || (detected === target ? '原文已是' + langName(target) : '翻译完成')
+      };
+    }
+
     if (CONFIG.endpoint) {
-      return translateWithEndpoint(text, source, target).then(function (output) {
-        return { text: output, note: '翻译完成' };
+      return translateWithEndpoint(text, target).then(function (out) {
+        return makeResult(out.text, out.detected || guess);
       }, function (error) {
-        // 自定义接口挂了（域名不可达 / Worker 超额 / 网络异常）时，自动回退 MyMemory，
-        // 不让整页翻译失效；两路都失败才把两段原因一起显示。
-        var first = error && error.message ? error.message : '自定义接口失败';
-        return translateWithMyMemory(text, source, target).then(function (output) {
-          return { text: output, note: '接口不可用，已回退 MyMemory' };
+        // 自建接口不可用（域名解析失败 / 额度用尽 / 网络异常）时改用备用引擎，
+        // 不让整页翻译失效；两条都失败才把两段原因一起显示。
+        var first = error && error.message ? error.message : '接口调用失败';
+        return translateWithMyMemory(text, guess, target).then(function (output) {
+          return makeResult(output, guess, '主接口不可用，已改用备用引擎');
         }, function (error2) {
-          var second = error2 && error2.message ? error2.message : '在线翻译失败';
-          throw new Error(first + '；' + second);
+          throw new Error(first + '；' + (error2 && error2.message ? error2.message : '备用引擎也失败'));
         });
       });
     }
-    if (engine === 'mymemory') {
-      return translateWithMyMemory(text, source, target).then(function (output) {
-        return { text: output, note: '在线翻译完成' };
-      }).catch(function (error) {
-        var message = error && error.message ? error.message : '在线翻译失败';
-        throw new Error(message + '。可切换“模拟”或检查网络。');
-      });
-    }
-    return new Promise(function (resolve) {
-      setTimeout(function () {
-        resolve({ text: mockTranslate(text, target), note: '模拟翻译完成' });
-      }, 420);
+    return translateWithMyMemory(text, guess, target).then(function (output) {
+      return makeResult(output, guess);
+    }).catch(function (error) {
+      throw new Error((error && error.message ? error.message : '翻译失败') + '。请检查网络后重试。');
     });
   }
 
@@ -636,24 +640,29 @@
       return;
     }
 
-    var pair = resolvePair(text, targetEl.value);
+    var target = targetEl.value;
 
     setLoading(true);
     resetResult();
-    statusEl.textContent = '正在翻译（' + pair.label + '）…';
+    detectedEl.textContent = '识别中…';
+    statusEl.textContent = '正在识别语种并翻译…';
 
-    performTranslate(text, pair.source, pair.target, engineEl.value).then(function (output) {
+    performTranslate(text, target).then(function (output) {
       translated = output.text;
       result.textContent = output.text;
       result.classList.remove('empty');
       copyBtn.disabled = false;
-      statusEl.textContent = output.note + ' · ' + pair.label;
+      detectedEl.textContent = langName(output.detected);
+      detectedEl.classList.add('is-detected');
+      statusEl.textContent = output.note + ' · ' +
+        langName(output.detected) + ' → ' + langName(target);
       statusEl.classList.remove('error');
     }).catch(function (error) {
       translated = '';
       copyBtn.disabled = true;
       result.textContent = '翻译失败，请稍后重试';
       result.classList.add('empty');
+      resetDetected();
       statusEl.textContent = error && error.message ? error.message : '翻译失败';
       statusEl.classList.add('error');
     }).then(function () {
@@ -715,24 +724,9 @@
 
   targetEl.addEventListener('change', function () {
     savePref(STORAGE_TARGET, targetEl.value);
-    if (translated) {
-      translated = '';
-      result.textContent = '语言已切换，请重新翻译';
-      result.classList.add('empty');
-      copyBtn.disabled = true;
-      statusEl.textContent = '';
-    }
-  });
-
-  engineEl.addEventListener('change', function () {
-    savePref(STORAGE_ENGINE, engineEl.value);
-    if (translated) {
-      translated = '';
-      result.textContent = '引擎已切换，请重新翻译';
-      result.classList.add('empty');
-      copyBtn.disabled = true;
-      statusEl.textContent = '';
-    }
+    var hadResult = !!translated;
+    resetResult();
+    if (hadResult) statusEl.textContent = '目标语言已切换，请重新翻译';
   });
 
   var params = new URLSearchParams(window.location.search);
