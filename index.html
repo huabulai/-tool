@@ -313,6 +313,7 @@
       <textarea id="source" placeholder="粘贴或输入要翻译的句子…" rows="4" autocapitalize="sentences" autocomplete="off" spellcheck="false"></textarea>
       <div class="row">
         <button class="ghost" id="pasteBtn" type="button">读取剪贴板</button>
+        <button class="ghost" id="clearBtn" type="button">清空</button>
         <span class="spacer"></span>
         <span class="muted" id="prefill"></span>
       </div>
@@ -343,9 +344,8 @@
     </section>
 
     <p class="hint">
-      翻译由 MyMemory 免费接口提供，首次使用需联网；免费额度有限，失败时可切换“模拟”或改用自定义接口。<br>
-      文本会发送到第三方翻译服务，请勿翻译敏感信息。<br>
-      接入自己的服务：修改 <code>CONFIG.endpoint</code>，POST <code>{"text":"...","target":"en"}</code>，返回 <code>{"translation":"..."}</code>。
+      翻译由自建接口提供（百度翻译 + 假发术语表），接口不可用时自动回退 MyMemory，无需手动切换。<br>
+      文本会发送到第三方翻译服务，请勿翻译敏感信息。
     </p>
   </main>
 </div>
@@ -364,9 +364,9 @@
   'use strict';
 
   var CONFIG = {
-    // 留空 = 使用内置模拟翻译。
-    // 填写你的代理地址后，页面会 POST { text, target }，并读取 { translation }。
-    endpoint: ''
+    // 自建代理：百度翻译 + 假发术语表，失败时自动回退 MyMemory。
+    // 页面会 POST { text, source, target }，并读取 { translation }。
+    endpoint: 'https://translate-proxy-ynexjuqsls.cn-hangzhou.fcapp.run/translate'
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -380,6 +380,7 @@
   var targetEl = $('target');
   var engineEl = $('engine');
   var pasteBtn = $('pasteBtn');
+  var clearBtn = $('clearBtn');
   var closeBtn = $('closeBtn');
   var toastEl = $('toast');
   var doneEl = $('done');
@@ -566,6 +567,16 @@
     if (CONFIG.endpoint) {
       return translateWithEndpoint(text, source, target).then(function (output) {
         return { text: output, note: '翻译完成' };
+      }, function (error) {
+        // 自定义接口挂了（域名不可达 / Worker 超额 / 网络异常）时，自动回退 MyMemory，
+        // 不让整页翻译失效；两路都失败才把两段原因一起显示。
+        var first = error && error.message ? error.message : '自定义接口失败';
+        return translateWithMyMemory(text, source, target).then(function (output) {
+          return { text: output, note: '接口不可用，已回退 MyMemory' };
+        }, function (error2) {
+          var second = error2 && error2.message ? error2.message : '在线翻译失败';
+          throw new Error(first + '；' + second);
+        });
       });
     }
     if (engine === 'mymemory') {
@@ -680,6 +691,14 @@
     }
     source.focus();
     toast('无法自动读取，请长按输入框选择“粘贴”');
+  });
+
+  clearBtn.addEventListener('click', function () {
+    source.value = '';
+    prefillEl.textContent = '';
+    updateCount();
+    resetResult();
+    source.focus();
   });
 
   closeBtn.addEventListener('click', function () {
